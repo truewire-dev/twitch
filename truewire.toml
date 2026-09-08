@@ -4,16 +4,44 @@ name = "twitch"
 [spec]
 dir = "spec"
 
-[cores.default]
-meta = { type = "object", properties = { public = { type = "boolean" } }, additionalProperties = false }
+[secrets]
+# The application's own client id and secret, from https://dev.twitch.tv/console/apps.
+# Never values: the core reads these two variable names from the environment when a
+# caller does not pass credentials to `Twitch.new()`, and `truewire standards` uses the
+# names to flag a recording that leaked one.
+required = ["TWITCH_CLIENT_ID", "TWITCH_CLIENT_SECRET"]
+
+[cores.helix]
+# Helix has exactly two credential tiers, and the difference is per endpoint: most of
+# these read public data and answer to an app access token, while creating an EventSub
+# WebSocket subscription needs a user access token the client credentials flow cannot
+# mint. `token` is the whole of what an endpoint tells the HTTP core (authoring rule 9),
+# and the core refuses a `user` endpoint before the request when it holds no user token.
+meta = { type = "object", properties = { token = { enum = [
+  "app",
+  "user",
+] } }, required = [
+  "token",
+], additionalProperties = false }
+
+[cores.socket]
+# The EventSub socket reads nothing per call: `keepalive_timeout_seconds` travels in the
+# connection URL, and there is one connection per subscription.
 
 [python]
-package = "twitch"
+package = "twitch_helix"
 src = "src"
 name = "Twitch"
+ruff = "ruff.toml"
 
 [python.cores.root]
-base = "twitch.core:ClientBase"
+# The `websocket` group is built on the root's `socket` field; every other group gets
+# `client`, the HTTP transport for `api.twitch.tv`.
+base = "twitch_helix.core:ClientBase"
+children = { websocket = "socket" }
 
-[python.cores.default]
-base = "twitch.core:Endpoint"
+[python.cores.helix]
+base = "twitch_helix.core:Endpoint"
+
+[python.cores.socket]
+base = "twitch_helix.core:StreamEndpoint"

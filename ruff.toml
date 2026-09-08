@@ -1,0 +1,30 @@
+# The generated files are formatted by Truewire's own ruff settings (two-space indents,
+# single quotes); the hand-written code follows the same so the package reads as one.
+line-length = 100
+indent-width = 2
+target-version = "py311"
+
+[format]
+quote-style = "single"
+indent-style = "space"
+skip-magic-trailing-comma = false
+docstring-code-format = true
+
+[lint]
+select = ["E", "F", "I", "W", "TID251"]
+ignore = ["E501"]
+
+[lint.isort]
+known-first-party = ["twitch_helix"]
+
+[lint.flake8-tidy-imports.banned-api]
+"typing" = { msg = "Import from typing_extensions, as the generated code does." }
+
+[lint.per-file-ignores]
+# Generated modules keep the import order the generator writes; regenerating would undo a sort.
+"src/twitch_helix/main.py" = ["I001"]
+"src/twitch_helix/schemas.py" = ["I001"]
+"src/twitch_helix/meta.py" = ["I001"]
+"src/twitch_helix/*/__init__.py" = ["I001"]
+"src/twitch_helix/*/*.py" = ["I001"]
+"src/twitch_helix/core/*.py" = []

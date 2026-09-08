@@ -1,0 +1,5 @@
+{
+  "description": "Published videos: a broadcaster's past broadcasts, highlights and uploads, paged by cursor.",
+  "upstream": "https://dev.twitch.tv/docs/api/reference/#get-videos",
+  "core": "helix"
+}

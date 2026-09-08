@@ -1,0 +1,5 @@
+{
+  "description": "EventSub subscriptions over HTTP: what the application listens for, and on whose channel. A subscription created here is what makes events arrive on the socket that `websocket.events()` opens.",
+  "upstream": "https://dev.twitch.tv/docs/eventsub/manage-subscriptions/",
+  "core": "helix"
+}

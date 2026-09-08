@@ -1,0 +1,5 @@
+{
+  "description": "Channel settings: the title, category, language, tags and content labels a broadcaster is streaming or last streamed under.",
+  "upstream": "https://dev.twitch.tv/docs/api/reference/#get-channel-information",
+  "core": "helix"
+}

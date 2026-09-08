@@ -1,0 +1,4 @@
+{
+  "description": "One socket, with the default ten-second keepalive",
+  "parameters": {}
+}

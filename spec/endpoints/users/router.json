@@ -1,0 +1,5 @@
+{
+  "description": "Accounts, by id or by login name (`GET /helix/users`).",
+  "upstream": "https://dev.twitch.tv/docs/api/reference/#get-users",
+  "core": "helix"
+}

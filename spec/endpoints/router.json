@@ -1,5 +1,5 @@
 {
-  "description": "Twitch API.",
-  "upstream": "https://api.twitch.tv",
+  "description": "The Twitch Helix API: users, live streams, videos, clips, categories and channels, plus EventSub — the subscriptions over HTTP and the events they deliver over one WebSocket. Every call authenticates with an application client id and an app access token minted from the client credentials flow.",
+  "upstream": "https://dev.twitch.tv/docs/api/",
   "core": "root"
 }

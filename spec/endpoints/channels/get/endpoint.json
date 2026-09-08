@@ -1,0 +1,125 @@
+{
+  "docs": "https://dev.twitch.tv/docs/api/reference/#get-channel-information",
+  "meta": {
+    "token": "app"
+  },
+  "spec": {
+    "kind": "rpc",
+    "transports": [
+      "http"
+    ],
+    "path": "/helix/channels",
+    "method": "GET",
+    "description": "Channel settings for one or more broadcasters: what they are streaming or last streamed, under which title, category, language, tags and content labels.",
+    "request": {
+      "title": "GetChannelsRequest",
+      "type": "object",
+      "description": "Whose channels to read.",
+      "properties": {
+        "broadcaster_id": {
+          "type": "array",
+          "description": "Broadcaster ids whose channels to read, such as `141981764`. Sent as repeated `broadcaster_id` query parameters; at most 100.",
+          "items": {
+            "type": "string",
+            "description": "One broadcaster id."
+          },
+          "maxItems": 100
+        }
+      },
+      "required": [
+        "broadcaster_id"
+      ]
+    },
+    "response": {
+      "title": "ChannelsFrame",
+      "type": "object",
+      "description": "The wire frame. `/helix/channels` does not page, so it carries `data` alone.",
+      "properties": {
+        "data": {
+          "type": "array",
+          "description": "The channels found; empty when none of the ids matched.",
+          "items": {
+            "title": "Channel",
+            "type": "object",
+            "description": "One channel's settings.",
+            "properties": {
+              "broadcaster_id": {
+                "type": "string",
+                "description": "An ID that identifies the broadcaster."
+              },
+              "broadcaster_login": {
+                "type": "string",
+                "description": "The broadcaster's login name."
+              },
+              "broadcaster_name": {
+                "type": "string",
+                "description": "The broadcaster's display name."
+              },
+              "broadcaster_language": {
+                "type": "string",
+                "description": "The broadcaster's preferred language, as an ISO 639-1 two-letter code, or `other`."
+              },
+              "game_id": {
+                "type": "string",
+                "description": "The category being played or last played; an empty string for a broadcaster that never has."
+              },
+              "game_name": {
+                "type": "string",
+                "description": "The name of that category; an empty string for a broadcaster that never played one."
+              },
+              "title": {
+                "type": "string",
+                "description": "The title of the current or last broadcast; an empty string for a broadcaster that never streamed."
+              },
+              "delay": {
+                "type": "integer",
+                "description": "The broadcaster's stream delay setting, in seconds. Zero unless the call used that broadcaster's own user access token and they are a partner who set one."
+              },
+              "tags": {
+                "type": "array",
+                "description": "The tags applied to the channel.",
+                "items": {
+                  "type": "string",
+                  "description": "One tag."
+                }
+              },
+              "content_classification_labels": {
+                "type": "array",
+                "description": "The content classification labels applied to the channel.",
+                "items": {
+                  "type": "string",
+                  "description": "One label, such as `Gambling` or `MatureGame`."
+                }
+              },
+              "is_branded_content": {
+                "type": "boolean",
+                "description": "Whether the channel is flagged as branded content."
+              }
+            },
+            "required": [
+              "broadcaster_id",
+              "broadcaster_login",
+              "broadcaster_name",
+              "broadcaster_language",
+              "game_id",
+              "game_name",
+              "title",
+              "delay"
+            ]
+          }
+        }
+      },
+      "required": [
+        "data"
+      ]
+    }
+  },
+  "unverified": {
+    "reason": "missing_credentials",
+    "detail": "No recording yet: Helix authenticates every call, and the machine this spec was written on holds no Twitch application credentials. The Record workflow fills this in: it reads the application client id and secret from the repository secrets TWITCH_CLIENT_ID and TWITCH_CLIENT_SECRET, mints an app access token through the core, replays this endpoint's `examples/*.request.json` with `truewire capture`, and opens a pull request with the response the API sent."
+  },
+  "notes": [
+    "The response schema is the wire frame, `{\"data\": [...], \"pagination\": {...}}`, and no `envelope.payload` is declared, so the method returns the frame and the rows are `result[\"data\"]` (ADR 0010, authoring rule 6). Unwrapping `data` would put the pagination cursor out of reach: pagination paths resolve inside whatever the method returns, and Helix puts the cursor beside `data`, not inside it. One rule for every Helix method is worth more than unwrapping the five endpoints here that never page.",
+    "Written from the Helix reference at the `docs` URL above. Fields the reference marks deprecated are not declared; an undeclared field passes validation and is dropped from the validated value, so a recording that carries one is still valid. The first recording confirms or corrects the rest."
+  ]
+}

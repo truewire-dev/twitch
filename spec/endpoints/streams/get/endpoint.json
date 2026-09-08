@@ -1,0 +1,203 @@
+{
+  "docs": "https://dev.twitch.tv/docs/api/reference/#get-streams",
+  "meta": {
+    "token": "app"
+  },
+  "spec": {
+    "kind": "rpc",
+    "transports": [
+      "http"
+    ],
+    "path": "/helix/streams",
+    "method": "GET",
+    "description": "Live broadcasts, most watched first, filtered by broadcaster, category or language. A broadcaster who is not live is simply absent from the answer. Viewers come and go while a walk is in flight, so a stream can be seen twice or missed across pages.",
+    "request": {
+      "title": "GetStreamsRequest",
+      "type": "object",
+      "description": "Which live broadcasts, and which page of them.",
+      "properties": {
+        "user_id": {
+          "type": "array",
+          "description": "Only these broadcasters, by user id. Sent as repeated `user_id` query parameters; at most 100.",
+          "items": {
+            "type": "string",
+            "description": "One user id."
+          },
+          "maxItems": 100
+        },
+        "user_login": {
+          "type": "array",
+          "description": "Only these broadcasters, by login name, such as `twitchdev`. Sent as repeated `user_login` query parameters; at most 100.",
+          "items": {
+            "type": "string",
+            "description": "One login name."
+          },
+          "maxItems": 100
+        },
+        "game_id": {
+          "type": "array",
+          "description": "Only broadcasts of these categories, by category id. Sent as repeated `game_id` query parameters; at most 100.",
+          "items": {
+            "type": "string",
+            "description": "One category id."
+          },
+          "maxItems": 100
+        },
+        "type": {
+          "type": "string",
+          "description": "The type of broadcast to return. Defaults to `all`.",
+          "enum": [
+            "all",
+            "live"
+          ],
+          "default": "all"
+        },
+        "language": {
+          "type": "array",
+          "description": "Only broadcasts in these languages, as ISO 639-1 two-letter codes, or `other` for a language Twitch does not list. Sent as repeated `language` query parameters; at most 100.",
+          "items": {
+            "type": "string",
+            "description": "One language code."
+          },
+          "maxItems": 100
+        },
+        "first": {
+          "type": "integer",
+          "description": "Rows per page. Range [1, 100]; defaults to 20.",
+          "minimum": 1,
+          "maximum": 100,
+          "default": 20
+        },
+        "after": {
+          "type": "string",
+          "description": "Cursor for the next page, taken from `pagination.cursor` of the previous response; omit for the first page."
+        },
+        "before": {
+          "type": "string",
+          "description": "Cursor for the previous page, taken from `pagination.cursor` of the previous response. The generated walk only pages forward, with `after`."
+        }
+      }
+    },
+    "response": {
+      "title": "StreamsFrame",
+      "type": "object",
+      "description": "The wire frame: one page of live broadcasts, and the cursor for the next.",
+      "properties": {
+        "data": {
+          "type": "array",
+          "description": "The live broadcasts on this page, most watched first.",
+          "items": {
+            "title": "Stream",
+            "type": "object",
+            "description": "One live broadcast.",
+            "properties": {
+              "id": {
+                "type": "string",
+                "description": "An ID that identifies this broadcast. The video on demand it becomes carries the same id as its `stream_id`."
+              },
+              "user_id": {
+                "type": "string",
+                "description": "The ID of the broadcaster."
+              },
+              "user_login": {
+                "type": "string",
+                "description": "The broadcaster's login name."
+              },
+              "user_name": {
+                "type": "string",
+                "description": "The broadcaster's display name."
+              },
+              "game_id": {
+                "type": "string",
+                "description": "The ID of the category being streamed; an empty string when the channel has no category set."
+              },
+              "game_name": {
+                "type": "string",
+                "description": "The name of the category being streamed; an empty string when the channel has no category set."
+              },
+              "type": {
+                "type": "string",
+                "description": "The type of broadcast, `live`. An empty string where Twitch hit an error computing it. Left a bare string on purpose; see the notes."
+              },
+              "title": {
+                "type": "string",
+                "description": "The broadcast's title; an empty string if unset."
+              },
+              "tags": {
+                "type": "array",
+                "description": "The tags applied to the broadcast.",
+                "items": {
+                  "type": "string",
+                  "description": "One tag."
+                }
+              },
+              "viewer_count": {
+                "type": "integer",
+                "description": "How many people are watching right now."
+              },
+              "started_at": {
+                "type": "string",
+                "format": "date-time",
+                "description": "When the broadcast began."
+              },
+              "language": {
+                "type": "string",
+                "description": "The language of the broadcast, as an ISO 639-1 two-letter code, or `other`."
+              },
+              "thumbnail_url": {
+                "type": "string",
+                "description": "A URL to a frame from the last five minutes of the broadcast, with a `{width}x{height}` placeholder to replace with the size you want, in pixels."
+              }
+            },
+            "required": [
+              "id",
+              "user_id",
+              "user_login",
+              "user_name",
+              "game_id",
+              "game_name",
+              "type",
+              "title",
+              "viewer_count",
+              "started_at",
+              "language",
+              "thumbnail_url"
+            ]
+          }
+        },
+        "pagination": {
+          "$ref": "Pagination",
+          "description": "The cursor for the next page. Twitch sends this object empty once there are no more pages."
+        }
+      },
+      "required": [
+        "data"
+      ]
+    }
+  },
+  "pagination": {
+    "strategy": "token",
+    "cursor": {
+      "parameter": "after",
+      "from": "pagination.cursor"
+    },
+    "done": {
+      "kind": "absent_cursor",
+      "rows": "data"
+    },
+    "size": {
+      "parameter": "first"
+    }
+  },
+  "unverified": {
+    "reason": "missing_credentials",
+    "detail": "No recording yet: Helix authenticates every call, and the machine this spec was written on holds no Twitch application credentials. The Record workflow fills this in: it reads the application client id and secret from the repository secrets TWITCH_CLIENT_ID and TWITCH_CLIENT_SECRET, mints an app access token through the core, replays this endpoint's `examples/*.request.json` with `truewire capture`, and opens a pull request with the response the API sent."
+  },
+  "notes": [
+    "The response schema is the wire frame, `{\"data\": [...], \"pagination\": {...}}`, and no `envelope.payload` is declared, so the method returns the frame and the rows are `result[\"data\"]` (ADR 0010, authoring rule 6). Unwrapping `data` would put the pagination cursor out of reach: pagination paths resolve inside whatever the method returns, and Helix puts the cursor beside `data`, not inside it. One rule for every Helix method is worth more than unwrapping the five endpoints here that never page.",
+    "Twitch ends a walk by sending `pagination` as an *empty object*, not by omitting it and not with a null cursor, so the terminator is `absent_cursor` on `pagination.cursor` and a walk stops on the first page whose `pagination` holds no `cursor`.",
+    "`type` is left a bare string rather than `enum: [\"live\"]`: the reference documents one value and then documents an empty string for the error case, which is a second value a `Literal['live']` would reject at runtime.",
+    "`tag_ids` and `is_mature` are not declared: the reference marks both deprecated and says they return only an empty array and `false`.",
+    "Written from the Helix reference at the `docs` URL above. Fields the reference marks deprecated are not declared; an undeclared field passes validation and is dropped from the validated value, so a recording that carries one is still valid. The first recording confirms or corrects the rest."
+  ]
+}

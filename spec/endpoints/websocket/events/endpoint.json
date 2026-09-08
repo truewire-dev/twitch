@@ -1,0 +1,152 @@
+{
+  "docs": "https://dev.twitch.tv/docs/eventsub/handling-websocket-events/",
+  "meta": {},
+  "spec": {
+    "kind": "stream",
+    "channel": "ws",
+    "description": "Open an EventSub WebSocket and read every message it pushes. The first message is always `session_welcome`, carrying the session id; subscriptions created against that id with `eventsub.subscribe(...)` then deliver their events here as `notification` messages. `session_keepalive` says the connection is healthy, `session_reconnect` hands over a URL to move to, and `revocation` says a subscription has stopped and why. Nothing is ever sent to the socket: Twitch closes a connection that receives anything but a pong.",
+    "parameters": {
+      "title": "EventsParameters",
+      "type": "object",
+      "description": "The socket's own settings, sent as the connection URL's query string. The subscriptions are not here; they are created over HTTP against the session id the welcome message carries.",
+      "properties": {
+        "keepalive_timeout_seconds": {
+          "type": "integer",
+          "description": "How long Twitch may go without sending anything before it sends a `session_keepalive`, and how long the client should wait before treating the connection as lost. A whole number of seconds between 10 and 600; Twitch moves a numeric value outside that range to the nearest allowed one. Defaults to 10.",
+          "minimum": 10,
+          "maximum": 600,
+          "default": 10
+        }
+      }
+    },
+    "payload": {
+      "title": "EventSubMessage",
+      "type": "object",
+      "description": "One message. `metadata.message_type` says which of the five kinds it is and which parts of `payload` are filled in.",
+      "properties": {
+        "metadata": {
+          "title": "MessageMetadata",
+          "type": "object",
+          "description": "Which message this is, and when Twitch sent it.",
+          "properties": {
+            "message_id": {
+              "type": "string",
+              "description": "An ID that identifies this message, unique per session."
+            },
+            "message_type": {
+              "type": "string",
+              "description": "Which kind of message this is.",
+              "enum": [
+                "session_welcome",
+                "session_keepalive",
+                "notification",
+                "session_reconnect",
+                "revocation"
+              ]
+            },
+            "message_timestamp": {
+              "type": "string",
+              "format": "date-time",
+              "description": "When Twitch sent the message, to the nanosecond."
+            },
+            "subscription_type": {
+              "type": "string",
+              "description": "The subscription type this message is about, on a `notification` or a `revocation`."
+            },
+            "subscription_version": {
+              "type": "string",
+              "description": "The version of that subscription type, on a `notification` or a `revocation`."
+            }
+          },
+          "required": [
+            "message_id",
+            "message_type",
+            "message_timestamp"
+          ]
+        },
+        "payload": {
+          "title": "MessagePayload",
+          "type": "object",
+          "description": "What the message carries. Empty on a `session_keepalive`, a `session` on a `session_welcome` or `session_reconnect`, a `subscription` on a `revocation`, and both a `subscription` and an `event` on a `notification`.",
+          "properties": {
+            "session": {
+              "title": "Session",
+              "type": "object",
+              "description": "The WebSocket session this connection carries.",
+              "properties": {
+                "id": {
+                  "type": "string",
+                  "description": "The session id. This is the value an EventSub subscription names as its `transport.session_id` to deliver here."
+                },
+                "status": {
+                  "type": "string",
+                  "description": "The session's state: `connected` on a welcome, `reconnecting` on a reconnect. Left a bare string on purpose; see the notes."
+                },
+                "connected_at": {
+                  "type": "string",
+                  "format": "date-time",
+                  "description": "When the connection was established."
+                },
+                "keepalive_timeout_seconds": {
+                  "anyOf": [
+                    {
+                      "type": "integer"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ],
+                  "description": "How long Twitch will go without sending anything before sending a keepalive. Null on a `session_reconnect`, where the setting belongs to the new connection."
+                },
+                "reconnect_url": {
+                  "anyOf": [
+                    {
+                      "type": "string"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ],
+                  "description": "The URL to reconnect to, on a `session_reconnect`; null otherwise. Use it exactly as given: it carries its own query string. The old connection keeps delivering until the new one has been welcomed."
+                }
+              },
+              "required": [
+                "id",
+                "status"
+              ]
+            },
+            "subscription": {
+              "$ref": "EventSubSubscription",
+              "description": "The subscription this message is about, on a `notification` or a `revocation`. On a `revocation` its `status` says why it stopped."
+            },
+            "event": {
+              "type": "object",
+              "description": "The event itself, on a `notification`. Its fields are a fact about `metadata.subscription_type` — a `channel.follow` event carries `user_id` and `followed_at`, a `stream.online` event carries `type` and `started_at` — so it is kept as a map. See the notes.",
+              "additionalProperties": {
+                "description": "One field of the event."
+              }
+            }
+          }
+        }
+      },
+      "required": [
+        "metadata"
+      ]
+    }
+  },
+  "push": {
+    "trigger": "connect"
+  },
+  "unverified": {
+    "reason": "missing_credentials",
+    "detail": "No recording yet. Opening the socket needs no credentials, but a socket nobody has subscribed anything to only ever pushes a welcome and keepalives, and subscribing needs a user access token this machine does not hold. The Record workflow reads the socket for a bounded window through the generated client (`test/record_events.py`) and writes what arrived beside the parameters; with only the app credentials set that is the welcome and the keepalives, which is a real recording of the connect half."
+  },
+  "notes": [
+    "There is no subscribe frame to declare, so no `envelope.verb`: the connection is the subscription, the parameters travel in its URL, and Twitch closes a socket that receives anything but a pong. `push: {trigger: connect}` states that, and the mock server serves the endpoint through it. `truewire check` warns about the missing `envelope.verb` on every run; see NOTES.md.",
+    "The subscriptions this socket carries are created over HTTP, by `eventsub.subscribe(...)` naming the session id out of the welcome message. Nothing in the spec format can state that a `kind: \"stream\"` endpoint is fed by an `rpc` one, so it is stated here, in the README, and in NOTES.md.",
+    "The five message kinds are one `TypedDict` with `metadata.message_type` as the discriminator, not five variants in an `anyOf`. A caller narrows on `message[\"metadata\"][\"message_type\"]`, which is a `Literal` of the five values; see NOTES.md for why the union form is worse here.",
+    "The `event` object is a map: its fields depend on the subscription type, of which Twitch documents dozens, and declaring a handful of them would type the others wrong. `metadata.subscription_type` is what says how to read it.",
+    "`session.status` is left a bare string: the reference shows `connected` and `reconnecting` in its examples but publishes no closed list of session states.",
+    "Written from the Helix reference at the `docs` URL above. Fields the reference marks deprecated are not declared; an undeclared field passes validation and is dropped from the validated value, so a recording that carries one is still valid. The first recording confirms or corrects the rest."
+  ]
+}

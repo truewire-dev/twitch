@@ -1,0 +1,5 @@
+{
+  "description": "Clips captured from a broadcast, by clip id, by broadcaster or by category, paged by cursor.",
+  "upstream": "https://dev.twitch.tv/docs/api/reference/#get-clips",
+  "core": "helix"
+}

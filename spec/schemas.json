@@ -1,0 +1,136 @@
+{
+  "Pagination": {
+    "title": "Pagination",
+    "type": "object",
+    "description": "The cursor Helix pages every list with. Twitch sends this object *empty* on the last page rather than omitting it or nulling the cursor, so an absent `cursor` is how a walk ends.",
+    "properties": {
+      "cursor": {
+        "type": "string",
+        "description": "Opaque cursor. Pass it as the next request's `after` (or `before`, paging backwards); absent once there are no more pages."
+      }
+    }
+  },
+  "Game": {
+    "title": "Game",
+    "type": "object",
+    "description": "One category or game, as `/helix/games` and `/helix/games/top` list it.",
+    "properties": {
+      "id": {
+        "type": "string",
+        "description": "An ID that identifies the category or game."
+      },
+      "name": {
+        "type": "string",
+        "description": "The category's or game's name."
+      },
+      "box_art_url": {
+        "type": "string",
+        "description": "A URL to the category's or game's box art, with a `{width}x{height}` placeholder to replace with the size you want, in pixels."
+      },
+      "igdb_id": {
+        "type": "string",
+        "description": "The ID that IGDB uses to identify this game. An empty string where Twitch has no IGDB ID for it."
+      }
+    },
+    "required": [
+      "id",
+      "name",
+      "box_art_url"
+    ]
+  },
+  "EventSubTransport": {
+    "title": "EventSubTransport",
+    "type": "object",
+    "description": "How Twitch delivers a subscription's notifications, as it reports them back. The fields beyond `method` are the ones that method uses.",
+    "properties": {
+      "method": {
+        "type": "string",
+        "description": "The transport method.",
+        "enum": [
+          "webhook",
+          "websocket",
+          "conduit"
+        ]
+      },
+      "callback": {
+        "type": "string",
+        "description": "The HTTPS callback URL notifications are sent to, for `webhook`."
+      },
+      "session_id": {
+        "type": "string",
+        "description": "The WebSocket session the notifications are sent to, for `websocket`: the `id` of the `session_welcome` message that opened it."
+      },
+      "connected_at": {
+        "type": "string",
+        "format": "date-time",
+        "description": "When the WebSocket connection was established, for `websocket`."
+      },
+      "disconnected_at": {
+        "type": "string",
+        "format": "date-time",
+        "description": "When the WebSocket connection was lost, for `websocket`."
+      },
+      "conduit_id": {
+        "type": "string",
+        "description": "The conduit the notifications are sent to, for `conduit`."
+      }
+    },
+    "required": [
+      "method"
+    ]
+  },
+  "EventSubSubscription": {
+    "title": "EventSubSubscription",
+    "type": "object",
+    "description": "One EventSub subscription: what it listens for, on whose channel, and where the events go. The same shape comes back from creating one, from listing them, and inside a `notification` or `revocation` message on the socket.",
+    "properties": {
+      "id": {
+        "type": "string",
+        "description": "An ID that identifies the subscription."
+      },
+      "status": {
+        "type": "string",
+        "description": "The subscription's status. Events arrive only for `enabled`. The other values say why they stopped: `webhook_callback_verification_pending`, `webhook_callback_verification_failed`, `notification_failures_exceeded`, `authorization_revoked`, `moderator_removed`, `user_removed`, `chat_user_banned`, `version_removed`, `beta_maintenance`, and the `websocket_*` and `conduit_*` reasons. Left a bare string on purpose; see the endpoint's notes."
+      },
+      "type": {
+        "type": "string",
+        "description": "The subscription type, such as `stream.online`, `channel.follow` or `channel.chat.message`."
+      },
+      "version": {
+        "type": "string",
+        "description": "The version of that subscription type, such as `1` or `2`."
+      },
+      "condition": {
+        "type": "object",
+        "description": "The parameter values for this subscription type: `broadcaster_user_id`, `user_id`, `moderator_user_id` and so on. Which keys are required is a fact about the subscription type, so the shape is a map of strings.",
+        "additionalProperties": {
+          "type": "string",
+          "description": "One condition value, always a string on the wire."
+        }
+      },
+      "created_at": {
+        "type": "string",
+        "format": "date-time",
+        "description": "When the subscription was created."
+      },
+      "transport": {
+        "$ref": "EventSubTransport",
+        "description": "Where the notifications for this subscription are delivered."
+      },
+      "cost": {
+        "type": "integer",
+        "description": "What this subscription counts against the application's total cost limit. A subscription the user authorized usually costs 0."
+      }
+    },
+    "required": [
+      "id",
+      "status",
+      "type",
+      "version",
+      "condition",
+      "created_at",
+      "transport",
+      "cost"
+    ]
+  }
+}

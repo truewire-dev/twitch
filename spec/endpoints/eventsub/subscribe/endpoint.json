@@ -1,0 +1,120 @@
+{
+  "docs": "https://dev.twitch.tv/docs/api/reference/#create-eventsub-subscription",
+  "meta": {
+    "token": "user"
+  },
+  "spec": {
+    "kind": "rpc",
+    "transports": [
+      "http"
+    ],
+    "path": "/helix/eventsub/subscriptions",
+    "method": "POST",
+    "description": "Create an EventSub subscription: the event type to listen for, the condition saying whose events those are, and the transport to deliver them over. For the WebSocket transport that transport names the `session_id` from the `session_welcome` message of an open socket, and the events then arrive on that socket. Answered `202 Accepted` with the subscription as created.",
+    "request": {
+      "title": "CreateSubscriptionRequest",
+      "type": "object",
+      "description": "The subscription to create. Sent as a JSON body.",
+      "properties": {
+        "type": {
+          "type": "string",
+          "description": "The subscription type to create, such as `stream.online`, `channel.follow` or `channel.chat.message`."
+        },
+        "version": {
+          "type": "string",
+          "description": "The version of that subscription type, such as `1` or `2`. Which versions exist is a fact about the type."
+        },
+        "condition": {
+          "type": "object",
+          "description": "The parameter values for this subscription type: `broadcaster_user_id`, `user_id`, `moderator_user_id` and so on. Which keys are required, and which scopes they need, is a fact about the subscription type.",
+          "additionalProperties": {
+            "type": "string",
+            "description": "One condition value, always a string on the wire."
+          }
+        },
+        "transport": {
+          "title": "CreateSubscriptionTransport",
+          "type": "object",
+          "description": "Where Twitch should deliver this subscription's notifications.",
+          "properties": {
+            "method": {
+              "type": "string",
+              "description": "The transport method. `websocket` is the one this client opens a socket for.",
+              "enum": [
+                "webhook",
+                "websocket",
+                "conduit"
+              ]
+            },
+            "session_id": {
+              "type": "string",
+              "description": "The WebSocket session to deliver to, for `websocket`: the `id` of the `session_welcome` message that opened the socket."
+            },
+            "callback": {
+              "type": "string",
+              "description": "The HTTPS callback URL to deliver to, for `webhook`. Port 443, no redirects."
+            },
+            "secret": {
+              "type": "string",
+              "description": "The secret Twitch signs webhook deliveries with, for `webhook`: 10 to 100 ASCII characters. Never recorded; see the notes."
+            },
+            "conduit_id": {
+              "type": "string",
+              "description": "The conduit to deliver to, for `conduit`."
+            }
+          },
+          "required": [
+            "method"
+          ]
+        }
+      },
+      "required": [
+        "type",
+        "version",
+        "condition",
+        "transport"
+      ]
+    },
+    "response": {
+      "title": "CreateSubscriptionFrame",
+      "type": "object",
+      "description": "The wire frame: the one subscription just created, and what the application has spent on subscriptions in total.",
+      "properties": {
+        "data": {
+          "type": "array",
+          "description": "A list holding the one subscription created.",
+          "items": {
+            "$ref": "EventSubSubscription",
+            "description": "One subscription."
+          }
+        },
+        "total": {
+          "type": "integer",
+          "description": "How many subscriptions the application currently has."
+        },
+        "total_cost": {
+          "type": "integer",
+          "description": "The sum of every subscription's cost."
+        },
+        "max_total_cost": {
+          "type": "integer",
+          "description": "The most the application is allowed to spend on subscriptions."
+        }
+      },
+      "required": [
+        "data"
+      ]
+    }
+  },
+  "unverified": {
+    "reason": "missing_credentials",
+    "detail": "No recording yet: Helix authenticates every call, and the machine this spec was written on holds no Twitch application credentials. The Record workflow fills this in: it reads the application client id and secret from the repository secrets TWITCH_CLIENT_ID and TWITCH_CLIENT_SECRET, mints an app access token through the core, replays this endpoint's `examples/*.request.json` with `truewire capture`, and opens a pull request with the response the API sent."
+  },
+  "notes": [
+    "The response schema is the wire frame and no `envelope.payload` is declared, so the method returns the frame: `total`, `total_cost` and `max_total_cost` sit beside `data` and are answers a caller wants, not an envelope to index past (authoring rule 6).",
+    "This is the one endpoint here that needs a *user* access token, which is what `meta: {\"token\": \"user\"}` declares: the reference is explicit that a WebSocket subscription created with an app access token fails, and the client credentials flow cannot mint a user token. The core refuses the call before making a request when the client holds none. That also means the Record workflow, which mints an app access token, cannot record this endpoint; the `unverified` block stands until somebody records it with a user token.",
+    "`transport.secret` is a credential and belongs to the `webhook` transport, which this client does not use. It is declared because the request body has it, and a recorded example must never carry a real one.",
+    "`status` on a subscription is left a bare string rather than an `enum`. The reference lists the values twice, in the filter parameter and in the response body, and the two lists differ: `websocket_failed_to_reconnect` and `conduit_deleted` appear in one and not the other. A guessed `Literal` would reject a status Twitch already sends, so the filter parameter — where an invalid value is a `400` and a `Literal` genuinely helps — declares the enum and the response field does not. `truewire check` warns about the response field on every run; the warning is correct that this may be a closed set, and wrong that the closed set is known.",
+    "Written from the Helix reference at the `docs` URL above. Fields the reference marks deprecated are not declared; an undeclared field passes validation and is dropped from the validated value, so a recording that carries one is still valid. The first recording confirms or corrects the rest."
+  ]
+}

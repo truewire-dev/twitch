@@ -1,0 +1,14 @@
+{
+  "description": "Subscribe to TwitchDev going live, delivered to an open WebSocket session",
+  "request": {
+    "type": "stream.online",
+    "version": "1",
+    "condition": {
+      "broadcaster_user_id": "141981764"
+    },
+    "transport": {
+      "method": "websocket",
+      "session_id": "REPLACE_WITH_THE_SESSION_ID_FROM_session_welcome"
+    }
+  }
+}

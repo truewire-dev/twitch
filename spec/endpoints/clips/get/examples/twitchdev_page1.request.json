@@ -1,0 +1,7 @@
+{
+  "description": "The first three of TwitchDev's clips, most viewed first",
+  "request": {
+    "broadcaster_id": "141981764",
+    "first": 3
+  }
+}

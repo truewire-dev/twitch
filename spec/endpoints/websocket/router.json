@@ -1,0 +1,5 @@
+{
+  "description": "EventSub's WebSocket transport: one socket that opens with a session id and then carries every event the application has subscribed that session to.",
+  "upstream": "https://dev.twitch.tv/docs/eventsub/handling-websocket-events/",
+  "core": "socket"
+}

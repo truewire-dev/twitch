@@ -1,0 +1,134 @@
+{
+  "docs": "https://dev.twitch.tv/docs/api/reference/#get-users",
+  "meta": {
+    "token": "app"
+  },
+  "spec": {
+    "kind": "rpc",
+    "transports": [
+      "http"
+    ],
+    "path": "/helix/users",
+    "method": "GET",
+    "description": "Look up accounts by id, by login name, or by both. At most 100 across the two, and an id or login that does not exist is left out of the answer rather than erroring.",
+    "request": {
+      "title": "GetUsersRequest",
+      "type": "object",
+      "description": "Which accounts to look up.",
+      "properties": {
+        "id": {
+          "type": "array",
+          "description": "User ids to look up, such as `141981764`. Sent as repeated `id` query parameters. At most 100 ids and logins together.",
+          "items": {
+            "type": "string",
+            "description": "One user id."
+          },
+          "maxItems": 100
+        },
+        "login": {
+          "type": "array",
+          "description": "Login names to look up, such as `twitchdev`. Sent as repeated `login` query parameters. At most 100 ids and logins together.",
+          "items": {
+            "type": "string",
+            "description": "One login name."
+          },
+          "maxItems": 100
+        }
+      }
+    },
+    "response": {
+      "title": "UsersFrame",
+      "type": "object",
+      "description": "The wire frame. `/helix/users` does not page, so it carries `data` alone.",
+      "properties": {
+        "data": {
+          "type": "array",
+          "description": "The accounts found, in no particular order.",
+          "items": {
+            "title": "User",
+            "type": "object",
+            "description": "One account's public profile.",
+            "properties": {
+              "id": {
+                "type": "string",
+                "description": "An ID that identifies the user."
+              },
+              "login": {
+                "type": "string",
+                "description": "The user's login name, lowercase."
+              },
+              "display_name": {
+                "type": "string",
+                "description": "The user's display name, which may differ in case from `login`."
+              },
+              "type": {
+                "type": "string",
+                "description": "The type of user. `\"\"` for a normal user.",
+                "enum": [
+                  "",
+                  "admin",
+                  "global_mod",
+                  "staff"
+                ]
+              },
+              "broadcaster_type": {
+                "type": "string",
+                "description": "The type of broadcaster. `\"\"` for a normal broadcaster.",
+                "enum": [
+                  "",
+                  "affiliate",
+                  "partner"
+                ]
+              },
+              "description": {
+                "type": "string",
+                "description": "The user's description of their channel; an empty string if unset."
+              },
+              "profile_image_url": {
+                "type": "string",
+                "description": "A URL to the user's profile image."
+              },
+              "offline_image_url": {
+                "type": "string",
+                "description": "A URL to the image shown on the channel when it is offline; an empty string if unset."
+              },
+              "created_at": {
+                "type": "string",
+                "format": "date-time",
+                "description": "When the user's account was created."
+              },
+              "email": {
+                "type": "string",
+                "description": "The user's verified email address. Present only when the call used a user access token carrying the `user:read:email` scope, and then only for the user that granted it."
+              }
+            },
+            "required": [
+              "id",
+              "login",
+              "display_name",
+              "type",
+              "broadcaster_type",
+              "description",
+              "profile_image_url",
+              "offline_image_url",
+              "created_at"
+            ]
+          }
+        }
+      },
+      "required": [
+        "data"
+      ]
+    }
+  },
+  "unverified": {
+    "reason": "missing_credentials",
+    "detail": "No recording yet: Helix authenticates every call, and the machine this spec was written on holds no Twitch application credentials. The Record workflow fills this in: it reads the application client id and secret from the repository secrets TWITCH_CLIENT_ID and TWITCH_CLIENT_SECRET, mints an app access token through the core, replays this endpoint's `examples/*.request.json` with `truewire capture`, and opens a pull request with the response the API sent."
+  },
+  "notes": [
+    "The response schema is the wire frame, `{\"data\": [...], \"pagination\": {...}}`, and no `envelope.payload` is declared, so the method returns the frame and the rows are `result[\"data\"]` (ADR 0010, authoring rule 6). Unwrapping `data` would put the pagination cursor out of reach: pagination paths resolve inside whatever the method returns, and Helix puts the cursor beside `data`, not inside it. One rule for every Helix method is worth more than unwrapping the five endpoints here that never page.",
+    "`view_count` is not declared: the reference marks it deprecated and says its data is not valid and should not be used. It still arrives on the wire and is dropped from the validated value.",
+    "`email` is declared but an app access token never carries it, so no recording made by the Record workflow can hold a real address.",
+    "Written from the Helix reference at the `docs` URL above. Fields the reference marks deprecated are not declared; an undeclared field passes validation and is dropped from the validated value, so a recording that carries one is still valid. The first recording confirms or corrects the rest."
+  ]
+}

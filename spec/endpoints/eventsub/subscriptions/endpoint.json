@@ -1,0 +1,123 @@
+{
+  "docs": "https://dev.twitch.tv/docs/api/reference/#get-eventsub-subscriptions",
+  "meta": {
+    "token": "app"
+  },
+  "spec": {
+    "kind": "rpc",
+    "transports": [
+      "http"
+    ],
+    "path": "/helix/eventsub/subscriptions",
+    "method": "GET",
+    "description": "The EventSub subscriptions this application has created, oldest first, paged by cursor. The filters are mutually exclusive: give at most one. An app access token lists the webhook and conduit subscriptions; the WebSocket ones belong to the user token that created them.",
+    "request": {
+      "title": "GetSubscriptionsRequest",
+      "type": "object",
+      "description": "Which subscriptions, and which page of them.",
+      "properties": {
+        "status": {
+          "type": "string",
+          "description": "Only subscriptions in this state.",
+          "enum": [
+            "enabled",
+            "webhook_callback_verification_pending",
+            "webhook_callback_verification_failed",
+            "notification_failures_exceeded",
+            "authorization_revoked",
+            "moderator_removed",
+            "user_removed",
+            "chat_user_banned",
+            "version_removed",
+            "beta_maintenance",
+            "websocket_disconnected",
+            "websocket_failed_ping_pong",
+            "websocket_received_inbound_traffic",
+            "websocket_connection_unused",
+            "websocket_internal_error",
+            "websocket_network_timeout",
+            "websocket_network_error",
+            "websocket_failed_to_reconnect",
+            "conduit_deleted"
+          ]
+        },
+        "type": {
+          "type": "string",
+          "description": "Only subscriptions of this type, such as `stream.online`."
+        },
+        "user_id": {
+          "type": "string",
+          "description": "Only subscriptions whose condition names this user id."
+        },
+        "subscription_id": {
+          "type": "string",
+          "description": "Only the subscription with this id, if the application owns it."
+        },
+        "conduit_id": {
+          "type": "string",
+          "description": "Only subscriptions delivered to this conduit."
+        },
+        "after": {
+          "type": "string",
+          "description": "Cursor for the next page, taken from `pagination.cursor` of the previous response; omit for the first page."
+        }
+      }
+    },
+    "response": {
+      "title": "SubscriptionsFrame",
+      "type": "object",
+      "description": "The wire frame: one page of subscriptions, what they cost in total, and the cursor for the next page.",
+      "properties": {
+        "data": {
+          "type": "array",
+          "description": "The subscriptions on this page, oldest first.",
+          "items": {
+            "$ref": "EventSubSubscription",
+            "description": "One subscription."
+          }
+        },
+        "total": {
+          "type": "integer",
+          "description": "How many subscriptions the application currently has."
+        },
+        "total_cost": {
+          "type": "integer",
+          "description": "The sum of every subscription's cost."
+        },
+        "max_total_cost": {
+          "type": "integer",
+          "description": "The most the application is allowed to spend on subscriptions."
+        },
+        "pagination": {
+          "$ref": "Pagination",
+          "description": "The cursor for the next page. Twitch sends this object empty once there are no more pages."
+        }
+      },
+      "required": [
+        "data"
+      ]
+    }
+  },
+  "pagination": {
+    "strategy": "token",
+    "cursor": {
+      "parameter": "after",
+      "from": "pagination.cursor"
+    },
+    "done": {
+      "kind": "absent_cursor",
+      "rows": "data"
+    }
+  },
+  "unverified": {
+    "reason": "missing_credentials",
+    "detail": "No recording yet: Helix authenticates every call, and the machine this spec was written on holds no Twitch application credentials. The Record workflow fills this in: it reads the application client id and secret from the repository secrets TWITCH_CLIENT_ID and TWITCH_CLIENT_SECRET, mints an app access token through the core, replays this endpoint's `examples/*.request.json` with `truewire capture`, and opens a pull request with the response the API sent."
+  },
+  "notes": [
+    "The response schema is the wire frame and no `envelope.payload` is declared. Here the frame is the clearest case for keeping it: `total`, `total_cost` and `max_total_cost` are answers, and the walk reads its cursor out of `pagination`, which unwrapping `data` would put out of reach (authoring rule 6, ADR 0010).",
+    "Twitch ends a walk by sending `pagination` as an *empty object*, not by omitting it and not with a null cursor, so the terminator is `absent_cursor` on `pagination.cursor` and a walk stops on the first page whose `pagination` holds no `cursor`.",
+    "The walk declares no `size`: this endpoint takes no `first` parameter, and the reference says the page size is undetermined.",
+    "`status` on a subscription is left a bare string rather than an `enum`. The reference lists the values twice, in the filter parameter and in the response body, and the two lists differ: `websocket_failed_to_reconnect` and `conduit_deleted` appear in one and not the other. A guessed `Literal` would reject a status Twitch already sends, so the filter parameter — where an invalid value is a `400` and a `Literal` genuinely helps — declares the enum and the response field does not. `truewire check` warns about the response field on every run; the warning is correct that this may be a closed set, and wrong that the closed set is known.",
+    "Written from the Helix reference at the `docs` URL above. Fields the reference marks deprecated are not declared; an undeclared field passes validation and is dropped from the validated value, so a recording that carries one is still valid. The first recording confirms or corrects the rest."
+  ]
+}

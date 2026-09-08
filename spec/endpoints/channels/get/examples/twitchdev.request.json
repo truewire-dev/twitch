@@ -1,0 +1,8 @@
+{
+  "description": "The TwitchDev channel's settings",
+  "request": {
+    "broadcaster_id": [
+      "141981764"
+    ]
+  }
+}

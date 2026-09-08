@@ -1,0 +1,268 @@
+{
+  "docs": "https://dev.twitch.tv/docs/api/reference/#get-videos",
+  "meta": {
+    "token": "app"
+  },
+  "spec": {
+    "kind": "rpc",
+    "transports": [
+      "http"
+    ],
+    "path": "/helix/videos",
+    "method": "GET",
+    "description": "Published videos, by video id, by broadcaster or by category. Exactly one of `id`, `user_id` and `game_id` is given; the remaining filters apply only alongside `user_id` or `game_id`.",
+    "request": {
+      "title": "GetVideosRequest",
+      "type": "object",
+      "description": "Which videos, and which page of them.",
+      "properties": {
+        "id": {
+          "type": "array",
+          "description": "Video ids to get, such as `335921245`. Sent as repeated `id` query parameters; at most 100. Mutually exclusive with `user_id` and `game_id`.",
+          "items": {
+            "type": "string",
+            "description": "One video id."
+          },
+          "maxItems": 100
+        },
+        "user_id": {
+          "type": "string",
+          "description": "The broadcaster whose videos to get. Mutually exclusive with `id` and `game_id`."
+        },
+        "game_id": {
+          "type": "string",
+          "description": "The category whose videos to get, at most 500 of them. Mutually exclusive with `id` and `user_id`."
+        },
+        "language": {
+          "type": "string",
+          "description": "Only videos broadcast in this language, as an ISO 639-1 two-letter code, or `other`. Only alongside `game_id`."
+        },
+        "period": {
+          "type": "string",
+          "description": "Only videos published within this period. Defaults to `all`. Only alongside `game_id` or `user_id`.",
+          "enum": [
+            "all",
+            "day",
+            "week",
+            "month"
+          ],
+          "default": "all"
+        },
+        "sort": {
+          "type": "string",
+          "description": "The order to return videos in: newest first, biggest gains in viewership first, or most viewed first. Defaults to `time`. Only alongside `game_id` or `user_id`.",
+          "enum": [
+            "time",
+            "trending",
+            "views"
+          ],
+          "default": "time"
+        },
+        "type": {
+          "type": "string",
+          "description": "Only videos of this type. Defaults to `all`. Only alongside `game_id` or `user_id`.",
+          "enum": [
+            "all",
+            "archive",
+            "highlight",
+            "upload"
+          ],
+          "default": "all"
+        },
+        "first": {
+          "type": "integer",
+          "description": "Rows per page. Range [1, 100]; defaults to 20.",
+          "minimum": 1,
+          "maximum": 100,
+          "default": 20
+        },
+        "after": {
+          "type": "string",
+          "description": "Cursor for the next page, taken from `pagination.cursor` of the previous response; omit for the first page."
+        },
+        "before": {
+          "type": "string",
+          "description": "Cursor for the previous page, taken from `pagination.cursor` of the previous response. The generated walk only pages forward, with `after`."
+        }
+      }
+    },
+    "response": {
+      "title": "VideosFrame",
+      "type": "object",
+      "description": "The wire frame: one page of videos, and the cursor for the next.",
+      "properties": {
+        "data": {
+          "type": "array",
+          "description": "The videos on this page.",
+          "items": {
+            "title": "Video",
+            "type": "object",
+            "description": "One published video.",
+            "properties": {
+              "id": {
+                "type": "string",
+                "description": "An ID that identifies the video."
+              },
+              "stream_id": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "description": "The broadcast this video was recorded from; null unless the video is an `archive`."
+              },
+              "user_id": {
+                "type": "string",
+                "description": "The ID of the broadcaster that owns the video."
+              },
+              "user_login": {
+                "type": "string",
+                "description": "The broadcaster's login name."
+              },
+              "user_name": {
+                "type": "string",
+                "description": "The broadcaster's display name."
+              },
+              "title": {
+                "type": "string",
+                "description": "The video's title."
+              },
+              "description": {
+                "type": "string",
+                "description": "The video's description."
+              },
+              "created_at": {
+                "type": "string",
+                "format": "date-time",
+                "description": "When the video was created."
+              },
+              "published_at": {
+                "type": "string",
+                "format": "date-time",
+                "description": "When the video was published."
+              },
+              "url": {
+                "type": "string",
+                "description": "The video's URL on twitch.tv."
+              },
+              "thumbnail_url": {
+                "type": "string",
+                "description": "A URL to a thumbnail, with `%{width}` and `%{height}` placeholders to replace with the size you want. Twitch currently serves only 320 by 180."
+              },
+              "viewable": {
+                "type": "string",
+                "description": "The video's viewable state; always `public`.",
+                "enum": [
+                  "public"
+                ]
+              },
+              "view_count": {
+                "type": "integer",
+                "description": "How many times the video has been watched."
+              },
+              "language": {
+                "type": "string",
+                "description": "The language the video was broadcast in, as an ISO 639-1 two-letter code, or `other`."
+              },
+              "type": {
+                "type": "string",
+                "description": "The video's type: a past broadcast, a highlight cut from one, or a video the broadcaster uploaded.",
+                "enum": [
+                  "archive",
+                  "highlight",
+                  "upload"
+                ]
+              },
+              "duration": {
+                "type": "string",
+                "description": "The video's length, written the way Twitch writes durations: `3m21s` is three minutes and twenty-one seconds."
+              },
+              "muted_segments": {
+                "anyOf": [
+                  {
+                    "type": "array",
+                    "description": "The muted segments.",
+                    "items": {
+                      "title": "MutedSegment",
+                      "type": "object",
+                      "description": "One stretch of the video Twitch Audio Recognition muted.",
+                      "properties": {
+                        "duration": {
+                          "type": "integer",
+                          "description": "How long the muted stretch lasts, in seconds."
+                        },
+                        "offset": {
+                          "type": "integer",
+                          "description": "How far into the video the muted stretch begins, in seconds."
+                        }
+                      },
+                      "required": [
+                        "duration",
+                        "offset"
+                      ]
+                    }
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "description": "The stretches Twitch Audio Recognition muted; null where none were."
+              }
+            },
+            "required": [
+              "id",
+              "user_id",
+              "user_login",
+              "user_name",
+              "title",
+              "description",
+              "created_at",
+              "published_at",
+              "url",
+              "thumbnail_url",
+              "viewable",
+              "view_count",
+              "language",
+              "type",
+              "duration"
+            ]
+          }
+        },
+        "pagination": {
+          "$ref": "Pagination",
+          "description": "The cursor for the next page. Twitch sends this object empty once there are no more pages."
+        }
+      },
+      "required": [
+        "data"
+      ]
+    }
+  },
+  "pagination": {
+    "strategy": "token",
+    "cursor": {
+      "parameter": "after",
+      "from": "pagination.cursor"
+    },
+    "done": {
+      "kind": "absent_cursor",
+      "rows": "data"
+    },
+    "size": {
+      "parameter": "first"
+    }
+  },
+  "unverified": {
+    "reason": "missing_credentials",
+    "detail": "No recording yet: Helix authenticates every call, and the machine this spec was written on holds no Twitch application credentials. The Record workflow fills this in: it reads the application client id and secret from the repository secrets TWITCH_CLIENT_ID and TWITCH_CLIENT_SECRET, mints an app access token through the core, replays this endpoint's `examples/*.request.json` with `truewire capture`, and opens a pull request with the response the API sent."
+  },
+  "notes": [
+    "The response schema is the wire frame, `{\"data\": [...], \"pagination\": {...}}`, and no `envelope.payload` is declared, so the method returns the frame and the rows are `result[\"data\"]` (ADR 0010, authoring rule 6). Unwrapping `data` would put the pagination cursor out of reach: pagination paths resolve inside whatever the method returns, and Helix puts the cursor beside `data`, not inside it. One rule for every Helix method is worth more than unwrapping the five endpoints here that never page.",
+    "Twitch ends a walk by sending `pagination` as an *empty object*, not by omitting it and not with a null cursor, so the terminator is `absent_cursor` on `pagination.cursor` and a walk stops on the first page whose `pagination` holds no `cursor`.",
+    "`stream_id` and `muted_segments` are nullable on the wire, so both are `anyOf` with `{\"type\": \"null\"}` rather than a multi-type schema (authoring rule 5).",
+    "Written from the Helix reference at the `docs` URL above. Fields the reference marks deprecated are not declared; an undeclared field passes validation and is dropped from the validated value, so a recording that carries one is still valid. The first recording confirms or corrects the rest."
+  ]
+}

@@ -1,0 +1,5 @@
+{
+  "description": "Live broadcasts happening right now, filtered by broadcaster, category or language, ordered by viewer count and paged by cursor.",
+  "upstream": "https://dev.twitch.tv/docs/api/reference/#get-streams",
+  "core": "helix"
+}
