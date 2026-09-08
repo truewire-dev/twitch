@@ -287,18 +287,22 @@ class Transport:
   http: HttpClient
   validate: bool = True
 
-  async def headers(self, *, tier: Tier) -> dict[str, str]:
-    """The two headers every Helix call carries, plus the media type.
+  async def headers(self, *, tier: Tier, body: bytes | None = None) -> dict[str, str]:
+    """The two headers every Helix call carries, plus the media types.
 
     `Client-Id` is the application, `Authorization` the token; Helix refuses a call
-    missing either, whatever the endpoint reads.
+    missing either, whatever the endpoint reads. Recomputed per attempt, so a retry
+    after a `401` carries the token minted in between rather than the one that failed.
     """
     token = await self.auth.token(tier)
-    return {
+    headers = {
       'Accept': 'application/json',
       'Client-Id': self.auth.identity(),
       'Authorization': f'Bearer {token.reveal()}',
     }
+    if body is not None:
+      headers['Content-Type'] = 'application/json'
+    return headers
 
   async def send(
     self, method: str, path: str, *, params: dict[str, Any], body: bytes | None, tier: Tier
@@ -316,24 +320,19 @@ class Transport:
         filled = filled.replace(f'{{{name}}}', str(value))
         params.pop(name)
     url = self.base_url.rstrip('/') + '/' + filled.lstrip('/')
-    headers = {
-      **await self.headers(tier=tier),
-      **({'Content-Type': 'application/json'} if body else {}),
-    }
-    response = await self.http.request(
-      method, url, params=params or None, content=body, headers=headers
-    )
-    if response.status_code == 401 and self.auth.invalidate(tier):
-      response = await self.http.request(
+
+    async def attempt():
+      return await self.http.request(
         method,
         url,
         params=params or None,
         content=body,
-        headers={
-          **await self.headers(tier=tier),
-          **({'Content-Type': 'application/json'} if body else {}),
-        },
+        headers=await self.headers(tier=tier, body=body),
       )
+
+    response = await attempt()
+    if response.status_code == 401 and self.auth.invalidate(tier):
+      response = await attempt()
     if response.status_code >= 400:
       raise_for_status(method, filled, response.status_code, response.text, response.headers)
     return response.content
