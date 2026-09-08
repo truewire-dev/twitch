@@ -1,0 +1,57 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  gates:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python: ['3.11', '3.12']
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v4
+      - name: Install
+        run: |
+          uv venv --python ${{ matrix.python }} .venv
+          uv pip install --python .venv/bin/python -e '.[dev]'
+      - name: Spec checks
+        run: .venv/bin/truewire check
+      - name: Standards
+        run: .venv/bin/truewire standards
+      - name: Generated code is current
+        # `--check` compares every owned file's content to what the plan renders, and the
+        # plan stands in for the manifest on a fresh clone, so nothing under `.truewire/`
+        # needs committing for this to be a real check.
+        run: .venv/bin/truewire generate python --check
+      - name: Tests against the mock server
+        # No credentials: every test builds the client with an obviously fake app token,
+        # which is what keeps the client credentials flow out of the suite entirely.
+        run: .venv/bin/python -m pytest -q -rs
+      - name: Type usage
+        run: .venv/bin/pyright
+      - name: Lint and format
+        run: |
+          .venv/bin/ruff check src test
+          .venv/bin/ruff format --check src test
+
+  recordings:
+    name: Every endpoint has a recording
+    runs-on: ubuntu-latest
+    # Advisory until the first recording pull request lands. Set the repository variable
+    # REQUIRE_RECORDINGS to `true` to make it a required check.
+    continue-on-error: ${{ vars.REQUIRE_RECORDINGS != 'true' }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v4
+      - name: Install
+        run: |
+          uv venv --python 3.12 .venv
+          uv pip install --python .venv/bin/python -e '.[dev]'
+      - name: Recorded, or declared why not
+        run: .venv/bin/truewire examples --require-verified --verbose
+      - name: Recorded, every one
+        run: .venv/bin/python test/verified.py --check

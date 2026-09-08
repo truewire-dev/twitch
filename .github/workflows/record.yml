@@ -1,0 +1,101 @@
+name: Record
+
+# Re-record every example from the live Twitch APIs and open a pull request with the
+# result. Manual: Actions > Record > Run workflow. The runner has both the network access
+# and the credentials the machine this client was written on had neither of.
+#
+# Needs two repository secrets, from an application registered at
+# https://dev.twitch.tv/console/apps:
+#
+#   TWITCH_CLIENT_ID      the application's client id
+#   TWITCH_CLIENT_SECRET  the application's client secret
+#
+# The job fails with that message when either is missing rather than recording nothing and
+# reporting success. Opening the pull request also needs "Allow GitHub Actions to create
+# and approve pull requests" enabled under Settings > Actions > General.
+on:
+  workflow_dispatch:
+    inputs:
+      eventsub_seconds:
+        description: How long to read the EventSub socket, in seconds.
+        default: '25'
+      eventsub_limit:
+        description: How many EventSub messages to keep per socket.
+        default: '5'
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  record:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Credentials are present
+        # Before anything installs, so a repository without the secrets fails in seconds
+        # with a message that says exactly what to add and where.
+        env:
+          TWITCH_CLIENT_ID: ${{ secrets.TWITCH_CLIENT_ID }}
+          TWITCH_CLIENT_SECRET: ${{ secrets.TWITCH_CLIENT_SECRET }}
+        run: |
+          missing=""
+          [ -n "$TWITCH_CLIENT_ID" ] || missing="$missing TWITCH_CLIENT_ID"
+          [ -n "$TWITCH_CLIENT_SECRET" ] || missing="$missing TWITCH_CLIENT_SECRET"
+          if [ -n "$missing" ]; then
+            echo "::error::Missing repository secret(s):$missing. Every Helix endpoint needs an app access token, which is minted from an application's client id and secret. Register an application at https://dev.twitch.tv/console/apps and add both under Settings > Secrets and variables > Actions."
+            exit 1
+          fi
+          echo "Both credentials are set."
+      - uses: astral-sh/setup-uv@v4
+      - name: Install
+        run: |
+          uv venv --python 3.12 .venv
+          uv pip install --python .venv/bin/python -e '.[dev]'
+      - name: Record through the generated client
+        # The core mints an app access token from these two and sends `Client-Id` and
+        # `Authorization` on every call; neither value ever reaches a recorded example,
+        # because `truewire capture` records the parameters the call was made with and the
+        # response body, never a request header. `truewire capture` refuses a stream
+        # endpoint, so the EventSub socket is read for a bounded window through the same
+        # generated client and the messages it pushed are written beside its parameters.
+        env:
+          PYTHON: .venv/bin/python
+          TWITCH_CLIENT_ID: ${{ secrets.TWITCH_CLIENT_ID }}
+          TWITCH_CLIENT_SECRET: ${{ secrets.TWITCH_CLIENT_SECRET }}
+          EVENTSUB_SECONDS: ${{ inputs.eventsub_seconds }}
+          EVENTSUB_LIMIT: ${{ inputs.eventsub_limit }}
+        run: PATH="$PWD/.venv/bin:$PATH" sh test/recapture.sh
+      - name: Gates on the recordings
+        run: |
+          .venv/bin/truewire check
+          .venv/bin/truewire examples --require-verified --verbose | tee coverage.txt
+          .venv/bin/python -m pytest -q -rs
+      - name: Open a pull request
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if git diff --quiet -- spec; then
+            echo "Recordings unchanged; nothing to open."
+            exit 0
+          fi
+          branch="record/${{ github.run_id }}"
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git checkout -b "$branch"
+          git add spec
+          git commit -m "Record examples from the live Twitch APIs" \
+            -m "Recorded by the Record workflow, run ${{ github.run_id }}, through the generated client."
+          git push origin "$branch"
+          {
+            echo "Recorded by the [Record workflow](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}) through the generated client: \`truewire capture\` for the Helix calls, a ${{ inputs.eventsub_seconds }}s socket for EventSub."
+            echo
+            echo "Every changed endpoint keeps its request half and gains the response the API sent. Endpoints that gained a recording no longer declare why they had none."
+            echo
+            echo "\`eventsub.subscribe\` is not recorded here: creating an EventSub subscription needs a *user* access token, and the client credentials flow these secrets drive mints an app access token. It keeps its \`unverified\` declaration until somebody records it with a user token."
+            echo
+            echo '```'
+            cat coverage.txt
+            echo '```'
+          } > body.md
+          gh pr create --title "Record examples from the live Twitch APIs" --body-file body.md --base main --head "$branch"
