@@ -1,0 +1,19 @@
+[project]
+name = "twitch"
+
+[spec]
+dir = "spec"
+
+[cores.default]
+meta = { type = "object", properties = { public = { type = "boolean" } }, additionalProperties = false }
+
+[python]
+package = "twitch"
+src = "src"
+name = "Twitch"
+
+[python.cores.root]
+base = "twitch.core:ClientBase"
+
+[python.cores.default]
+base = "twitch.core:Endpoint"

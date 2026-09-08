@@ -1,0 +1,8 @@
+.truewire/
+__pycache__/
+.venv/
+.pytest_cache/
+.ruff_cache/
+dist/
+build/
+*.egg-info/

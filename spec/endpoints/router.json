@@ -1,0 +1,5 @@
+{
+  "description": "Twitch API.",
+  "upstream": "https://api.twitch.tv",
+  "core": "root"
+}
